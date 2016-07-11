@@ -18,6 +18,8 @@ Some notes about using this template:
 * The filename for this spec should have something to do with the content
   (i.e, `myspec.md` is not a good title)
 
+* Cheatsheet (one of many) for markdown https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
+
 ## Problem statement
 
 A detailed description of the problem to be solved or the use
