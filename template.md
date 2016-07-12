@@ -18,7 +18,8 @@ Some notes about using this template:
 * The filename for this spec should have something to do with the content
   (i.e, `myspec.md` is not a good title)
 
-* Cheatsheet (one of many) for markdown https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
+* Cheatsheet (one of many) for
+  markdown https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
 
 ## Problem statement
 
@@ -36,16 +37,17 @@ why they have been rejected or are considered inferior
 
 ## Affected Components
 
-What major components are affected? oshinko-rest, oshinko-s2i, oshinko-web, etc.
+What major components are affected? oshinko-rest, oshinko-s2i, oshinko-web,
+etc.
 
-If the REST API will change as a result of this spec, it should be described here.
-A simple description of the endpoint and method should do, along with a JSON
-description of the request/response data
+If the REST API will change as a result of this spec, it should be described
+here. A simple description of the endpoint and method should do, along with a
+JSON description of the request/response data
 
 ## Testing
 
-How will this be testd, unit tests or additional end-to-end tests? Any special
-considerations?
+How will this be tested, unit tests or additional end-to-end tests? Any
+special considerations?
 
 ## Documentation
 
