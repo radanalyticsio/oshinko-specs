@@ -3,7 +3,7 @@
 ## Introduction
 
 Containers spun up under Oshinko will sometimes want access to the Oshinko
-REST services that created them.  The needed information -- REST URL/port,
+REST services that created them.  The needed information -- REST host/port,
 Spark cluster name (if this is a spark cluster pod), possibly other information
 -- can easily be provided as predefined environment variables that any
 Oshinko-spawned container can assume to be defined.
@@ -21,7 +21,7 @@ what the Spark cluster's own "name" is with respect to oshinko's API.
 Enhance the Oshinko REST server to define three new environment variables
 for any container it starts up:
 
-* OSHINKO_REST_URL -- the URL of the Oshinko REST server
+* OSHINKO_REST_HOST -- the host of the Oshinko REST server
 * OSHINKO_REST_PORT -- the corresponding port for the server
 * OSHINKO_SPARK_CLUSTER -- the name of this spark cluster WRT Oshinko's API.
 This might only be defined if the container is a Spark master or worker node.
