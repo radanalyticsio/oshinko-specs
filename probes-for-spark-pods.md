@@ -87,10 +87,8 @@ This also does not address the readiness probe case.
 * oshinko-rest will need to have its routines for creating the Spark cluster
   objects updated to include the probe objects.
 
-* Spark image should be updated to add the probes into the OpenShift template
+* openshift-spark should be updated to add the probes into the OpenShift template
   included in the repository.
-
-* openshift-spark should also have its template updated.
 
 ## Testing
 
