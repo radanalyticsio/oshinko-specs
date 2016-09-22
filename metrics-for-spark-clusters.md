@@ -29,7 +29,7 @@ Oshinko generates for Spark clusters will need to be changed to include the
 two Graphite based contianers and a service will need to be created to allow
 access to the metrics data. Images will also need to be generated for these
 new processes, and the Spark images will need to have their configuration
-files changes to allow metrics reporting.
+files changed to allow metrics reporting.
 
 **Example 1, sample metrics topics**
 
@@ -95,7 +95,7 @@ methodology, there will need to be changes to the oshinko-rest application,
 the addition of a configuration file to current Spark images, and the
 creation of two images for the Graphite and Carbon components.
 
-The oshinko-rest application will need to modified so that the deployments
+The oshinko-rest application will need to be modified so that the deployments
 for Spark master pods will include the new Graphite and Carbon images. An
 example of what this looks like in YAML template form can be seen in
 example 2. The deployment will also need a service created for the Graphite
@@ -189,7 +189,7 @@ as graphical representations (eg. SVG).
 
 ```
 *.sink.graphite.class=org.apache.spark.metrics.sink.GraphiteSink
-*.sink.graphite.host=10.0.1.110
+*.sink.graphite.host=127.0.0.1
 *.sink.graphite.port=2003
 *.sink.graphite.period=10
 *.sink.graphite.unit=seconds
@@ -209,7 +209,7 @@ found, then a patch could be created for the upstream Spark project to better
 enable this sink. The main downside to this approach is the unknown factor
 of community acceptance for such a change.
 
-Another alternative would be to use on of the other sinks available in Spark.
+Another alternative would be to use one of the other sinks available in Spark.
 Each of these sinks carries differing levels of complication. On the simple
 end is the `CSVSink`, which writes metrics data to text files. This is
 problematic due to the restriction of needing a volume to write and access
