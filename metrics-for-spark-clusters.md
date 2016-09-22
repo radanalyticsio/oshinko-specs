@@ -108,8 +108,8 @@ that the metrics server is always deployed.
 
 The Spark images currently in use will need to have a `metrics.properties`
 file added to their configuration directory (`$SPARK_HOME/conf`). This file
-is responsible for enabling the metrics and the configuring the sink in use.
-The necessary components of that file can be seen in example 3.
+is responsible for enabling the metrics and configuring the sink in use. The
+necessary components of that file can be seen in example 3.
 
 Images will need to be created for the Graphite API server and the Carbon
 storage application. These images should be based on Centos for public
