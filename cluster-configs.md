@@ -45,49 +45,64 @@ example, a JSON cluster creation object would like like this:
 	      }
     }
 			   
-Additionally, a `stored-config` field should be added that
-can be used to refer to a stored configuration by name. If
-the stored-config field is set, the config object will be
-retrieved and those settings will be used.  For example:
+A `namedConfig` field should be added that
+can be used to refer to a stored configuration by name.
+For example:
 
     {
       "name": "fred",
-      "stored-config": "small",
+      "namedConfig": "small",
     }
 
-The `config` and `stored-config` fields will be optional
-and mutually exclusive. That is, one and only one must
-appear. If both or neither are present, an error will
-be returned.
+If the namedConfig field is set, the value will be
+used to look up a stored configuration. If the
+configuration is not found an error will be returned,
+otherwise the configuration will be read and used
+as the initial configuration for the cluster. If
+the `config` field is also set, any fields in the
+config object will be used to update the fields
+read from the named configuration. In this way
+a user can tweak an existing named configuration
+if desired without creating a new, separate named
+configuration or specifying an entire configuration
+in the config object if something similar exists.
 
-If a `stored-config` field refers to a config object which
-does not exist an erorr will be returned.
+Named configurations can be managed as a ConfigMap
+object, and that object can be mounted on the oshinko-rest
+pod as a volume. This will provide persistent storage
+for the named configurations within a project. Users
+will be able to dynamically create and modify named
+cluster configurations with this mechanism.
 
-As a first pass, oshinko will include a set of fixed
-configurations that may be used to create clusters of
-different sizes (`small`, `medium`, and `large`).
+The oshinko-rest template can be modified to mount
+a ConfigMap of a fixed name at a fixed location,
+for example "oshinko-cluster-configurations" at
+/etc/oshinko-cluster-configurations.
 
-In a future spec, options for persistent storage of cluster
-configurations and definition/modification of stored configs
-by end users will be explored.
+As a first pass, ConfigMaps will be managed using
+the openshift CLI. In the future, we may want to
+add an oshinko-rest endpoint for handling
+cluster configurations in a more abstract way.
 
 ### Alternatives
 
-Do not support stored configs. However, logical grouping
-of configuration settings is still desirable.
+None
 
 ## Affected Components
 
 oshinko-rest
 oshinko-web
 oshinko-cli
+oshinko-s2i (templates)
 
 ## Testing
 
 Existing unit tests and end-to-end tests that deal with clusters
-will be modified accordingly. Additionally, unit tests should be
-added to verify that the new fields are optional and mutually
-exclusive.
+will be modified accordingly.
+
+Additionally new unit tests should be added to test how
+presence/absence of the namedConfig and config fields is
+handled and the cluster configuration lookup mechanisms.
 
 ## Documentation
 
