@@ -31,10 +31,15 @@ become a possibility.
 
 ## Proposed solution
 
-The master and worker count fields in any current REST objects
-should be replaced with a configuration object that contains
-both fields and may in the future contain other fields. For
-example, a JSON cluster creation object would like like this:
+In the REST objects used to create and update clusters,
+the master and worker count fields should be moved inside
+of a `config` object along with a new `name` field.
+In the future, the config object may contain additional
+configuration fields. All fields become optional in this
+new scheme but the default value of the name field will
+be `default`.
+
+Examples of cluster creation objects:
 
     {
       "name": "fred",
@@ -44,37 +49,51 @@ example, a JSON cluster creation object would like like this:
 		"workerCount": 2
 	      }
     }
-			   
-A `namedConfig` field should be added that
-can be used to refer to a stored configuration by name.
-For example:
 
     {
-      "name": "fred",
-      "namedConfig": "small",
+      "name": "skynet",
+      "config":
+              {
+	        "name": "huge"
+	      }
     }
 
-If the namedConfig field is set, the value will be
-used to look up a stored configuration. If the
-configuration is not found an error will be returned,
-otherwise the configuration will be read and used
-as the initial configuration for the cluster. If
-the `config` field is also set, any fields in the
-config object will be used to update the fields
-read from the named configuration. In this way
-a user can tweak an existing named configuration
-if desired without creating a new, separate named
-configuration or specifying an entire configuration
-in the config object if something similar exists.
+    {
+      "name": "slightlybigger",
+      "config":
+              {
+	        "name": "small"
+		"workerCount": 3
+	      }
+    }
 
-Named configurations can be managed as a ConfigMap
+The initial configuration for all clusters will
+be the `default` configuration. If the config object
+specifies the name of a stored configuration,
+that stored configuration will be retrieved and used
+to update the cluster configuration. Lastly, any
+other settings in the config object will be used
+to update the configuration again resulting in a
+final set of values.
+
+Named configurations can be managed through a ConfigMap
 object, and that object can be mounted on the oshinko-rest
 pod as a volume. This will provide persistent storage
 for the named configurations within a project. Users
 will be able to dynamically create and modify named
-cluster configurations with this mechanism.
+cluster configurations with this mechanism. In general,
+named cluster configurations do not need to specify values
+for all configuration setttings, with one exception.
 
-The oshinko-rest template can be modified to mount
+There will be a hardcoded value for the `default`
+cluster configuration in oshinko-rest which will always
+be accessible. A user may override the default
+configuration by adding a `default` to the ConfigMap
+object. In this particular case, the user must specify
+a value for every configuration setting or the new
+default configuration will be considered invalid.
+
+The oshinko-rest template will be modified to mount
 a ConfigMap of a fixed name at a fixed location,
 for example "oshinko-cluster-configurations" at
 /etc/oshinko-cluster-configurations.
@@ -106,5 +125,5 @@ handled and the cluster configuration lookup mechanisms.
 
 ## Documentation
 
-There may be no existing documentation that is affected aside
-from the swagger generated API documentation.
+Documentation should be added explaining how the named
+configurations work and how to specify them.
