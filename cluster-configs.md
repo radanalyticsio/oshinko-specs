@@ -99,7 +99,7 @@ for example "oshinko-cluster-configurations" at
 /etc/oshinko-cluster-configurations.
 
 As a first pass, ConfigMaps will be managed using
-the openshift CLI. In the future, we may want to
+the standard CLI. In the future, we may want to
 add an oshinko-rest endpoint for handling
 cluster configurations in a more abstract way.
 
@@ -119,9 +119,9 @@ oshinko-s2i (templates)
 Existing unit tests and end-to-end tests that deal with clusters
 will be modified accordingly.
 
-Additionally new unit tests should be added to test how
-presence/absence of the namedConfig and config fields is
-handled and the cluster configuration lookup mechanisms.
+Additionally new unit tests should be added to test
+the overriding of values at different levels and
+the named configuration lookup mechanism.
 
 ## Documentation
 
