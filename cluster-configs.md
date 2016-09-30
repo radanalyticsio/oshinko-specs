@@ -68,30 +68,34 @@ Examples of cluster creation objects:
     }
 
 The initial configuration for all clusters will
-be the `default` configuration. If the config object
-specifies the name of a stored configuration,
-that stored configuration will be retrieved and used
-to update the cluster configuration. Lastly, any
-other settings in the config object will be used
-to update the configuration again resulting in a
-final set of values.
+be the `default` configuration hardcoded in
+oshikno (see below concerning an override mechanism).
+If the config object specifies the name of a stored
+configuration, that stored configuration
+will be retrieved and used to update the cluster
+configuration. Lastly, any other settings in the
+config object will be used to update the configuration
+again resulting in a final set of values.
 
-Named configurations can be managed through a ConfigMap
-object, and that object can be mounted on the oshinko-rest
+If the config object references a named configuration
+that does not exist, an error will be returned.
+
+Named configurations will be managed through a ConfigMap
+object, and that object will be mounted on the oshinko-rest
 pod as a volume. This will provide persistent storage
 for the named configurations within a project. Users
 will be able to dynamically create and modify named
-cluster configurations with this mechanism. In general,
-named cluster configurations do not need to specify values
-for all configuration setttings, with one exception.
+cluster configurations with this mechanism. Named
+configurations are not required to specify values for
+all configuration setttings.
 
-There will be a hardcoded value for the `default`
-cluster configuration in oshinko-rest which will always
-be accessible. A user may override the default
-configuration by adding a `default` to the ConfigMap
-object. In this particular case, the user must specify
-a value for every configuration setting or the new
-default configuration will be considered invalid.
+The hardcoded value for the `default` cluster configuration
+will always be accessible. A user may override the default
+configuration in whole or in part by adding a `default`
+configuration to the ConfigMap object. If oshinko sees
+a `default` entry in the ConfigMap, it will use any
+settings it contains to modify the hardcoded default
+before applying any other settings.
 
 The oshinko-rest template will be modified to mount
 a ConfigMap of a fixed name at a fixed location,
@@ -102,6 +106,36 @@ As a first pass, ConfigMaps will be managed using
 the standard CLI. In the future, we may want to
 add an oshinko-rest endpoint for handling
 cluster configurations in a more abstract way.
+
+Initially, named configurations will contain only
+the `masterCount` and `workerCount` fields. The
+configuration will be represented in a ConfigMap
+as a series of elements of the form `name.field'.
+For example, a `small` configuration would be made
+up of the following elements:
+
+* small.workerCount
+* small.masterCount
+
+Creating a hypothetical ConfigMap to hold a single
+`small` cluster configuration could be done this way:
+
+    $ oc create configmap cluster-configs \
+    --from-literal=small.workerCount=2 \
+    --from-literal=small.masterCount=1
+
+When this ConfigMap is mounted on a pod as a
+volume, each element will appear as a file containing
+the respective value:
+
+    $ ls /etc/oshinko-cluster-configs
+    small.masterCount small.workerCount
+
+Note that this scheme can be easily extended to
+handle nesting in the future, for example:
+
+* small.limits.memory
+* small.limits.cores
 
 ### Alternatives
 
