@@ -110,7 +110,7 @@ cluster configurations in a more abstract way.
 Initially, named configurations will contain only
 the `masterCount` and `workerCount` fields. The
 configuration will be represented in a ConfigMap
-as a series of elements of the form `name.field'.
+as a series of elements of the form `name.field`.
 For example, a `small` configuration would be made
 up of the following elements:
 
