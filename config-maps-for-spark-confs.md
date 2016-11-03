@@ -37,9 +37,10 @@ metrics, this spec recommends pursuing the simple approach first which can
 be done in a more timely manner and then perhaps implementing the alternative
 at a later time.
 
-In the simple approach, a `sparkConfig` field is added to the cluster
-config JSON object which names a ConfigMap to use as a source for spark
-cluster configuration:
+In the simple approach, `sparkMasterConfig` and `sparkWorkerConfig` fields
+are added to the cluster config JSON object. The values of these fields name
+ConfigMaps to use as a source for spark configuration files on the master
+and worker nodes respectively:
 
     {
       "name": "fred",
@@ -47,13 +48,14 @@ cluster configuration:
               {
                 "masterCount": 1,
                 "workerCount": 2,
-                "sparkConfig": "myconfiguration"
+                "sparkMasterConfig": "mymasterconfig",
+		"sparkWorkerConfig": "myworkerconfig"
               }
     }
 
-In this example, `myconfiguration` is the name of a ConfigMap
-that contains spark configuration settings like this (shown
-in yaml):
+In this example, `mymasterconfig` and `myworkerconfig` are the
+names of ConfigMaps which contain spark configuration settings that
+would look similar to this (shown in yaml):
 
     apiVersion: v1
     data:
@@ -70,17 +72,29 @@ in yaml):
       creationTimestamp: null
       labels:
         app: oshinko
-      name: oshinko-cluster-configs
+      name: myworkerconfig
 
-If oshinko sees the `sparkConfig` field set in the cluster config
+Note that `sparkMasterConfig` and `sparkWorkerConfig` could be set to
+the same value if all nodes in the cluster have the same configuration.
+Additionally, both are optional -- it is possible to customize the
+configuration for the workers and leave the master unmodified or
+vice versa.
+
+If oshinko sees either of these fields set in the cluster config
 object, it will mount the named ConfigMap as a volume at a fixed
-location on the spark nodes it creates and set the SPARK_CONF_DIR
-environment variable to that location.
+location on spark containers of the appropriate type and set
+the SPARK_CONF_DIR environment variable appropriately.
 
-It is up to the user to independently create the named ConfigMap
-with OpenShift facilities before launching the cluster. If the
-ConfigMap does not exist when oshinko create the cluster, an error
-will be returned and the cluster will not be created.
+It is up to the user to independently create the named ConfigMaps
+with OpenShift facilities before launching the cluster. If a
+specified ConfigMap does not exist when oshinko creates the cluster,
+an error will be returned and the cluster will not be created. By
+default OpenShift will not create a container until all referenced
+ConfigMaps exist (the container will be pending).
+
+Note that clusters which do not specify these ConfigMaps will have the
+static spark configuration which was set in the spark image being
+used.
 
 ### Alternatives
 
@@ -88,21 +102,20 @@ Oshinko already supports named configurations for cluster configs.
 An alternative approach is to allow the contents of the configuration
 files to be specified directly as part of a named configuration. For
 example, here are the contents of the `oshinko-cluster-configs` ConfigMap
-where the `small` configuration contains a log4j.properties file (shown
-in yaml):
+where the `small` configuration contains a log4j.properties file for
+spark worker nodes(shown in yaml):
 
     apiVersion: v1
     data:
       large.workercount: "10"
       medium.workercount: "5"
-      small.log4j.properties: |-
+      small.worker.log4j.properties: |-
         log4j.rootCategory=INFO, console
         log4j.appender.console=org.apache.log4j.ConsoleAppender
         log4j.appender.console.target=System.err
         log4j.appender.console.layout=org.apache.log4j.PatternLayout
         log4j.appender.console.layout.ConversionPattern=%d{yy/MM/dd HH:mm:ss} %p %c{1}: %m%n
       small.workercount: "3"
-      spark-defaults.conf: spark.executor.memory=8g
     kind: ConfigMap
     metadata:
       creationTimestamp: null
@@ -112,10 +125,11 @@ in yaml):
 
 In this approach, a list of supported configuration files would be added to
 Oshinko. If a cluster was created using a named configuration and that
-named configuration specified known files, the contents of those files would
-be added to a ConfigMap generated specifically for the new spark cluster
-and the cluster would be created with that ConfigMap mounted at a fixed
-location and the SPARK_CONF_DIR env var set appropriately.
+named configuration specified known files for master or worker nodes,
+the contents of those files would be added to a new ConfigMap generated
+for nodes of the given type. The cluster nodes would be created with those
+ConfigMaps mounted at a known location and with the SPARK_CONF_DIR env var set
+appropriately.
 
 The advantage of this approach is that a user would not have to independently
 create additional ConfigMaps for alternate spark configurations. They would
@@ -125,7 +139,7 @@ files with the rest of the cluster settings.
 
 This approach is more difficult because it requires Oshinko to create
 ConfgMap objects dynamically and to associate them with the cluster so that
-they may be cleaned up appropriate when the cluster is destroyed.
+they may be cleaned up appropriately when the cluster is destroyed.
 
 ## Affected Components
 
