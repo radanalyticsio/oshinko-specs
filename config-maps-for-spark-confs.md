@@ -15,6 +15,10 @@ configuration, especially in situations where cluster or application
 tuning are being done. Oshinko needs a more dynamic way to control
 the cluster configuration files.
 
+Additionally, since a spark image is shared between master and workers,
+there is no way using the image method to differentiate configs between
+master and worker nodes. One size must fit all.
+
 ## Proposed solution
 
 ConfigMap objects mounted as volumes on the spark master and worker
