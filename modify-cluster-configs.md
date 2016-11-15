@@ -84,3 +84,7 @@ Modify unit tests for the original impl
 
 Documentation should be added explaining how the named
 configurations work and how to specify them.
+
+## References ##
+
+[Pull request](https://github.com/radanalyticsio/oshinko-specs/pull/1) for the original spec
