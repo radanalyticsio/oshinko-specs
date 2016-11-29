@@ -14,7 +14,7 @@ Currently the oshinko container will mount a configmap named
 and use it as a source for named cluster configurations. If
 a user creates a cluster referencing one of these named
 configurations, oshinko will read the config and create
-the cluster accordingly. The orgininal spec for this feature
+the cluster accordingly. The original spec for this feature
 is noted at the end of the document.
 
 Configmaps mounted as volumes are a nice abstraction for
