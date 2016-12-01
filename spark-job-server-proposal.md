@@ -3,50 +3,64 @@
 ## Introduction
 
 This document provides design of spark job server which would trigger spark
-jobs either as scheduled or  batch jobs. Providing the user a ui for inputing
-the jar location, environment variables required to integrate with other apps,
-input parameters for spark job and files required.
+jobs either as scheduled or batch jobs. Providing the user a ui for inputing
+the source code git location, environment variables required to integrate with
+other apps, input parameters for spark job, selecting s2i builder image and
+files required.
 
 ## Problem Statement
 
-Spark Applications can only run within OpenShift environment and users are
-required to do provide only source code which currently we use source to image
-to create a standard image which will be run against the spark cluster.
-Currently there is no way to schedule jobs or to run cron jobs. Also if
-users have a more complex setup where they would need infinispan-server or
-other servers they would be required to do a lot of setup.
+The Data Platform Spark applications can only run within OpenShift
+environment and users are required to do provide only source code which
+currently we use source to image to create a standard image which will be run
+against the spark cluster. Currently there is no way to schedule jobs or to run
+cron jobs. Also if users have a more complex setup where they would need
+JDG or other servers they would be required to do a lot of manual setup.
 
 ## Proposed Solution
 
 Apache Spark users will submit their spark job in the form of binary jar or py
 files. These files will require users to provide input as well as be triggered
-by spark-submit shell script. However there are other environment
-requirements that may be needed by users as well.
+by spark-submit shell script. However there are other environment requirements
+that may be needed by users as well.
 
 The requirements to create, run, rerun, stop a particular spark job by one
 click of a button.
 
 With a simple html form users can provide the following input:
-* jar location / source git url
+* source git url
 * input parameters for spark job
 * files required to be mounted to run the job.
 * inject environment variables from services that this spark job would need
 to integrate with.
+* specify if they would like a new cluster created or if they would like to use
+an existing one
+* schedule when the job should run
+* how often the job should run
+
+The workflow would be user fills out html form and oshinko-console would send
+json payload with the information required to build the s2i image and then run
+a spark job including the inputs provided above. After that we would get an
+update in the ui to see jobs running and their status. There would be a button
+on the ui for users to rerun the spark job.
+
 
 ## Alternatives
 
-Alternative is to utilize the kube api since oshinko is currently making rest
-calls and ask the kubeapi to create a kubernetes job that will run the spark
-job for us.
+Alternative is to utilize templates to trigger a build which limits users to
+only be able to create a single container with binary that runs the spark job.
+
 
 ## Affected Components
 
 - oshinko-rest : Will need to have server-side rest api for
 create/list/start/restart/delete Spark job within kubernetes and have error
-handling incase of failure scenario. Also the vserver-side code would need to
-integrate with kubeapi.
-- oshinko-web : html form, angularjs javascript to make rest calls to backend
-api that would create/list/start/restart/delete spark jobs.
+handling incase of failure scenario. Also the server-side code would need to
+integrate with kubeapi. The backend when creating a spark job would first need
+to create the image using s2i technology then run the image in a batch/scheduled
+job against the kube api.
+- oshinko-console : html form, angularjs javascript to make rest calls to
+backend api that would create/list/start/restart/delete spark jobs.
 
 ## Testing
 
