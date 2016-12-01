@@ -11,7 +11,7 @@ files required.
 ## Problem Statement
 
 The Data Platform Spark applications can only run within OpenShift
-environment and users are required to do provide only source code which
+environment and users are required to provide only source code which
 currently we use source to image to create a standard image which will be run
 against the spark cluster. Currently there is no way to schedule jobs or to run
 cron jobs. Also if users have a more complex setup where they would need
@@ -38,13 +38,46 @@ an existing one
 * schedule when the job should run
 * how often the job should run
 
-The workflow would be user fills out html form and oshinko-console would send
-json payload with the information required to build the s2i image and then run
+The workflow would be user fills out html form and oshinko-webui would send
+json payload (see SampleJSON payload section below) with the information required to build the s2i image and then run
 a spark job including the inputs provided above. After that we would get an
 update in the ui to see jobs running and their status. There would be a button
 on the ui for users to rerun the spark job.
 
+## SampleJSON Payload
+For batch jobs:
 
+```json
+{
+	clusterName: "sparkRecommendMLlib",
+	gitUrl: "<url>",
+	s2iImage: "docker.io/radanalyticsio/radanalytics-java-spark"
+	sparkParams: "--class com.example.data.analytics.App /opt/recommend-mllib-1.0.0-SNAPSHOT-jar-with-dependencies.jar  --rank 5 --numIterations 5 --lambda 1.0 --infinispanHost $RECOMMEND_SERVICE_SERVICE_HOST --kryo $SPARK_HOME/data/mllib/sample_movielens_data.txt",
+	volumesMounts: ["vol-1"],
+	servicesToLink: ["JDG"],
+	runMode: "scheduled",
+	runModeInput: "*/5 * * * *"
+}
+```
+
+
+
+For scheduled jobs:
+
+
+```json
+{
+	clusterName: "sparkRecommendMLlib",
+	gitUrl: "<url>",
+	s2iImage: "docker.io/radanalyticsio/radanalytics-java-spark"
+	sparkParams: "--class com.example.data.analytics.App /opt/recommend-mllib-1.0.0-SNAPSHOT-jar-with-dependencies.jar  --rank 5 --numIterations 5 --lambda 1.0 --infinispanHost $RECOMMEND_SERVICE_SERVICE_HOST --kryo $SPARK_HOME/data/mllib/sample_movielens_data.txt",
+	volumesMounts: ["vol-1"],
+	servicesToLink: ["JDG"],
+	runMode: "scheduled",
+	runModeInput: "*/5 * * * *"
+}
+
+```
 ## Alternatives
 
 Alternative is to utilize templates to trigger a build which limits users to
