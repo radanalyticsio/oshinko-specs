@@ -1,4 +1,4 @@
-# Example Spec - title
+# GitHub Pages documentation for oshinko-rest
 
 ## Introduction
 
