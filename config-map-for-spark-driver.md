@@ -9,7 +9,7 @@ files through ConfigMaps in the container running the spark driver.
 
 Currently the only way to customize spark configuration files such
 as log4j.properties and spark-defaults.conf for spark driver
-applications is to create a custom oshinko s2i images which contain
+applications is to create custom oshinko s2i images which contain
 the custom settings. This is a very heavy-weight approach for
 configuration, especially in situations where application
 tuning is being done. Oshinko needs a more dynamic way to control
@@ -27,7 +27,7 @@ dynamic configuration of spark clusters (master and worker nodes).
 The OpenShift objects which define a spark cluster are created
 programmatically by oshinko, and so volumes and env vars can be
 setup up by oshinko during  cluster creation based on values set
-in JSON  payloads to oshinko-rest.
+in JSON payloads to oshinko-rest.
 
 ## Proposed solution
 
@@ -38,7 +38,7 @@ spark application.
 ConfigMap objects can store multiple named configuration files and
 be mounted to a particluar directory in a container. Consquently, it
 is possible to specify log4j.properties, spark-defaults.conf, and other
-files in a ConfigMap and mount them at a location such as /opt/spark/oshinko-conf
+files in a ConfigMap and mount them at a location such as `/opt/spark/oshinko-conf`
 in the spark driver container. If the environment variable SPARK_CONF_DIR
 is set to /opt/spark/oshinko-conf, then spark will read its configuration from
 the ConfigMap.
@@ -72,11 +72,11 @@ the driver:
 
 * use OpenShift facilities to edit the ConfigMap `oshinko-spark-driver-config`.
   This will change the default spark driver configuration for any application
-  launched using the oshinko templates.
+  launched in the project using the oshinko templates.
 
 * create one or more ConfigMaps in the project to hold spark driver configurations.
   Set the parameter in the oshinko templates to the name of one of these ConfigMaps
-  instead of `oshinko-spark-driver-config`.
+  instead of `oshinko-spark-driver-config` when the application is launched.
 
 A user-defind ConfigMap for a spark driver would look similar to this (shown in yaml):
 
@@ -118,9 +118,9 @@ by OpenShift and the application will not run.
 There must be a method to dynamically specify the configuration
 of the spark driver.  
 
-One alternative mentiond here for completeness is to use clients
+One alternative mentioned here for completeness is to use clients
 in the application pod to download a ConfigMap to the container
-and write the contents to an EmptyDir() volume in mounted in the
+and write the contents to an EmptyDir() volume  mounted in the
 driver container. This could be done in an init container in the
 application pod.
 
@@ -136,13 +136,14 @@ not make the application templates any simpler -- there would still
 be an additional parameter on the screen. Also, updates to the
 ConfigMap would not be written through to the pod automatically so
 behavior would not be consistent with ConfMaps used in spark cluster
-nodes.
+nodes. Additionally, it would require the driver pod to run using
+the oshinko service account which it does not currently do.
 
 ## Affected Components
 
 oshinko-s2i:
 
-* The application launcher has to modified to look in the
+* The application launcher has to be modified to look in the
   well-known config directory and determine whether or not
   a non-empty ConfigMap has been mounted there. If so, it
   must set the SPARK_CONF_DIR env var appropriately
