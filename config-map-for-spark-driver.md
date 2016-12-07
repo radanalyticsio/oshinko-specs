@@ -44,7 +44,7 @@ is set to /opt/spark/oshinko-conf, then spark will read its configuration from
 the ConfigMap.
 
 The deploymentconfig that defines a spark application container can
-specify that a ConfigMap be mounted at a well-defind location. However,
+specify that a ConfigMap be mounted at a well-defined location. However,
 the fact that templates do not support conditional logic makes it more
 difficult to support optional custom configuration -- a template either
 always mounts a ConfigMap as a volume in a container, or it never does.
@@ -110,8 +110,9 @@ with no data section:
       
 It is up to the user to create custom ConfigMaps with OpenShift
 facilities before launching the application. If a specified ConfigMap
-does not exist when the application is launched, an error will be returned
-by OpenShift and the application will not run.
+does not exist when the application is launched, the spark driver container
+will not start -- a container cannot be created until all ConfigMaps
+to be mounted as volumes exist.
 
 ### Alternatives
 
