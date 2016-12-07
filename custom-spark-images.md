@@ -19,7 +19,7 @@ Additionally, even when the image is changed during Oshinko installation,
 this image is fixed for all subsequent deployments of Spark in that project.
 
 These configurations restrain a user from being able to modify the Spark
-image on a per-application basis. Further, they require reinstallation of
+image on a per-application basis. Further, they require redeployment of
 the Oshinko pieces or configurations for the new changes to take effect.
 
 Redefining the Spark image that Oshinko will use for deployment is
