@@ -1,4 +1,4 @@
-# Example Spec - title
+# Custom Spark Images
 
 ## Introduction
 
