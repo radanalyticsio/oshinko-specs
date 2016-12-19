@@ -55,10 +55,12 @@ For batch jobs:
 	sparkParams: "--class com.example.data.analytics.App /opt/recommend-mllib-1.0.0-SNAPSHOT-jar-with-dependencies.jar  --rank 5 --numIterations 5 --lambda 1.0 --infinispanHost $RECOMMEND_SERVICE_SERVICE_HOST --kryo $SPARK_HOME/data/mllib/sample_movielens_data.txt",
 	volumesMounts: ["vol-1"],
 	servicesToLink: ["JDG"],
-	runMode: "scheduled",
-	runModeInput: "*/5 * * * *"
+	runMode: "batch",
+	runModeInput: "1"
 }
 ```
+
+Note: For batch mode you specify how many times it would run.
 
 
 
@@ -77,6 +79,8 @@ For scheduled jobs:
 	runModeInput: "*/5 * * * *"
 }
 
+Note: This would schedule the job to run every 5 minutes
+
 ```
 ## Alternatives
 
@@ -93,7 +97,9 @@ integrate with kubeapi. The backend when creating a spark job would first need
 to create the image using s2i technology then run the image in a batch/scheduled
 job against the kube api.
 - oshinko-console : html form, angularjs javascript to make rest calls to
-backend api that would create/list/start/restart/delete spark jobs.
+backend api that would create/list/start/stop spark jobs.
+
+Note: By creating openshift-console extention we can leverage already existing api's to manage spark jobs.
 
 ## Testing
 
