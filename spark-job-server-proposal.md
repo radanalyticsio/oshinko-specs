@@ -39,7 +39,8 @@ an existing one
 * how often the job should run
 
 The workflow would be user fills out html form and oshinko-webui would send
-json payload (see SampleJSON payload section below) with the information required to build the s2i image and then run
+json payload (see SampleJSON payload section below) with the information
+required to build the s2i image and then run
 a spark job including the inputs provided above. After that we would get an
 update in the ui to see jobs running and their status. There would be a button
 on the ui for users to rerun the spark job.
@@ -52,7 +53,10 @@ For batch jobs:
 	clusterName: "sparkRecommendMLlib",
 	gitUrl: "<url>",
 	s2iImage: "docker.io/radanalyticsio/radanalytics-java-spark"
-	sparkParams: "--class com.example.data.analytics.App /opt/recommend-mllib-1.0.0-SNAPSHOT-jar-with-dependencies.jar  --rank 5 --numIterations 5 --lambda 1.0 --infinispanHost $RECOMMEND_SERVICE_SERVICE_HOST --kryo $SPARK_HOME/data/mllib/sample_movielens_data.txt",
+	sparkParams: "--class com.example.data.analytics.App /opt/recommend-mllib-1.0.0-SNAPSHOT-jar-with-dependencies.jar  --rank 5
+	--numIterations 5 --lambda 1.0 --infinispanHost
+	$RECOMMEND_SERVICE_SERVICE_HOST --kryo
+	$SPARK_HOME/data/mllib/sample_movielens_data.txt",
 	volumesMounts: ["vol-1"],
 	servicesToLink: ["JDG"],
 	runMode: "batch",
@@ -62,44 +66,39 @@ For batch jobs:
 
 Note: For batch mode you specify how many times it would run.
 
-
-
 For scheduled jobs:
-
 
 ```json
 {
 	clusterName: "sparkRecommendMLlib",
 	gitUrl: "<url>",
 	s2iImage: "docker.io/radanalyticsio/radanalytics-java-spark"
-	sparkParams: "--class com.example.data.analytics.App /opt/recommend-mllib-1.0.0-SNAPSHOT-jar-with-dependencies.jar  --rank 5 --numIterations 5 --lambda 1.0 --infinispanHost $RECOMMEND_SERVICE_SERVICE_HOST --kryo $SPARK_HOME/data/mllib/sample_movielens_data.txt",
+	sparkParams: "--class com.example.data.analytics.App /opt/recommend-mllib-1.0.0-SNAPSHOT-jar-with-dependencies.jar  --rank 5
+	--numIterations 5 --lambda 1.0 --infinispanHost
+	$RECOMMEND_SERVICE_SERVICE_HOST --kryo
+	$SPARK_HOME/data/mllib/sample_movielens_data.txt",
 	volumesMounts: ["vol-1"],
 	servicesToLink: ["JDG"],
 	runMode: "scheduled",
 	runModeInput: "*/5 * * * *"
 }
+```
 
 Note: This would schedule the job to run every 5 minutes
 
-```
 ## Alternatives
 
 Alternative is to utilize templates to trigger a build which limits users to
 only be able to create a single container with binary that runs the spark job.
-
+Users would have to click add project and create the spark job everytime they
+need to run.
 
 ## Affected Components
 
-- oshinko-rest : Will need to have server-side rest api for
-create/list/start/restart/delete Spark job within kubernetes and have error
-handling incase of failure scenario. Also the server-side code would need to
-integrate with kubeapi. The backend when creating a spark job would first need
-to create the image using s2i technology then run the image in a batch/scheduled
-job against the kube api.
 - oshinko-console : html form, angularjs javascript to make rest calls to
-backend api that would create/list/start/stop spark jobs.
-
-Note: By creating openshift-console extention we can leverage already existing api's to manage spark jobs.
+backend api that would create/list/start/stop spark jobs. No rest client
+required as we will be leveraging existing openshift-api via openshift console
+extension.
 
 ## Testing
 
