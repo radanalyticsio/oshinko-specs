@@ -5,9 +5,9 @@
 Spark exposes several metrics about the state of the master and worker nodes
 as well as information about jobs that are running or have run. These metrics
 provide key data points that can be used for greater introspection into the
-cluster state and health. This specification proposes adding a Graphite[[1]]
-based metrics container to Oshinko generated Spark clusters with a service to
-expose a RESTful endpoint for metrics queries.
+cluster state and health. This specification proposes adding a metrics
+deployment option to Oshinko generated Spark clusters, with the ability
+to expose a RESTful endpoint for metrics queries.
 
 ## Problem statement
 
@@ -15,21 +15,17 @@ Spark has an internal metrics collection mechanism that can be used to
 harvest an array of data points(see example 1). There are several available
 "sinks" that can be used by Spark to expose the metrics data. By default,
 Spark exposes a minimal REST endpoint that can be queried for metrics data,
-this sink is referred to as the `MetricsServlet`[[2]]. Unfortunately, several
-tests with this endpoint failed to produce useful results.
+this sink is referred to as the `MetricsServlet`[[1]]. Although the
+`MetricsServlet` can be used to harvest some metrics data, it does not
+provide a rich interface to the metrics.
 
-Although the `MetricsServlet` sink has proven light on details, the
-`GraphiteSink` based on the Graphite project has proven quite valuable in
-mining Spark for metrics. The primary difficulty when using this sink is
-that it requires two other processes to be running alongside the Spark
-master; a collection tool named Carbon, and the Graphite API server.
-
-To effectively enable a Graphite based metrics solution, the pod spec that
-Oshinko generates for Spark clusters will need to be changed to include the
-two Graphite based contianers and a service will need to be created to allow
-access to the metrics data. Images will also need to be generated for these
-new processes, and the Spark images will need to have their configuration
-files changed to allow metrics reporting.
+To promote deeper introspection on running Spark clusters, the oshinko
+deployment methodology should be modified to include support for one of the
+richer metrics interfaces provided by the `JmxSink` or `GraphiteSink`
+implementations. These implementations provide a queryable interface to the
+metrics data provided by Spark. This interface will allow applications that
+wish to consume the metrics a much finer degree of control over the data
+they inspect.
 
 **Example 1, sample metrics topics**
 
@@ -90,26 +86,120 @@ files changed to allow metrics reporting.
 
 ## Proposed solution
 
-To implement a Graphite metrics solution with the current Spark deployment
-methodology, there will need to be changes to the oshinko-rest application,
-the addition of a configuration file to current Spark images, and the
-creation of two images for the Graphite and Carbon components.
+After several technology reviews, the proposed solution to this problem is
+to implement a `JmxSink` based metrics deployment using the Jolokia[[2]]
+project. Jolokia provides several options for deployment, as well as a
+RESTful server for interacting with the metrics data.
 
-The oshinko-rest application will need to be modified so that the deployments
+JMX is a protocol for the Java Management Extensions, which allow specific
+code portions to hook into the Java Virtual Machine with the end goal of
+allowing management behaviors. Using the JMX path to expose metrics will give
+the deployed clusters a high degree of flexibility with regards to integrating
+into the wider logging effort in OpenShift.
+
+There is a question as to the best deployment path with Jolokia though. The
+two primary methods that oshinko could use for adding Jolokia are as a JVM
+agent attached to the master node in a Spark cluster, or as a proxy agent
+in a container with network access to the JVM in a master node.
+
+### Jolokia as a JVM agent
+
+The simplest route to deploying Jolokia is to use the agent path. This change
+would require adding the Jolokia agent JAR file to the OpenShift Spark
+image and then changing the launch parameters for master deployment. In
+effect this would look as follows:
+
+```
+spark-class -javaagent:jolokia-agent.jar=port=19150,host=spark-master-123 org.apache.spark.deploy.master.Master
+```
+
+In this example, the Jolokia REST server is started on port `19150`, with the
+hostname being `spark-master-123` (this value is for example purposes only,
+in production the service name would be used). When launched, this pod could
+be queried for metrics data. If the metrics were needed outside of the pod,
+a service would need to be exposed allowing this acquisition.
+
+### Jolokia in proxy mode
+
+A more complicated method for adding Jolokia is to deploy it using the
+remote proxy methodology. In this form, a new container is created that
+contains a Tomcat HTTP server with the Jolokia agent. Requests that are
+made to the Jolokia agent through the HTTP server would have a clause
+directing them to the exposed JMX port on the JVM they wish to inspect.
+
+To properly enable the proxy mode, the launcher for the Spark master
+deployment would need to be changed to include a few specific definitions for
+the JVM. It would look something like this:
+
+```
+spark-class -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=19150 -Dcom.sun.management.jmxremote.local.only=false -Djava.rmi.server.hostname=127.0.0.1 -Dcom.sun.management.jmxremote.rmi.port=19151 org.apache.spark.deploy.master.Master
+```
+
+This would start the JVM for the master deployment with the JMX remote
+connection available on port `19150` for all local connections. In this manner
+only the local container with the HTTP server would be allowed to connect to
+the remote port.
+
+For this deployment, the pod spec for the Spark master would be changed to add
+the new container with the HTTP server and Jolokia agent.
+
+### Comparison
+
+Using Jolokia in agent mode attached directly to a Spark master is the most
+straightforward approach possible. This would require the addition of a
+Jolokia JAR file to the Spark master images. It would also require a small
+modification to the launcher script. This deployment would also then cause
+the master node to serve HTTP content from the Jolokia agent. It is unclear
+whether there will be performance impacts from running this style of
+deployment.
+
+In proxy mode, the deployment is more complicated as a new container image
+will need to be created and maintained by the oshinko team. The main benefit
+of this deployment is that the service for providing metrics can be scaled
+independently from the actual Spark node. There may be latency impacts based
+on having an extra REST server in the pipeline for aquiring the metrics data.
+
+Both implementations appear to provide the same data, with the same ability
+to craft specific requests to the Jolokia REST server. The primary
+differentiator is the separation of the REST server into a container of its
+own.
+
+### General changes
+
+Regardless of the methdology chosen, the `metrics.properties` configuration
+file will need to be adjusted to include the following lines:
+
+```
+*.sink.jmx.class=org.apache.spark.metrics.sink.JmxSink
+
+master.source.jvm.class=org.apache.spark.metrics.source.JvmSource
+worker.source.jvm.class=org.apache.spark.metrics.source.JvmSource
+driver.source.jvm.class=org.apache.spark.metrics.source.JvmSource
+executor.source.jvm.class=org.apache.spark.metrics.source.JvmSource
+master.source.executors.class=org.apache.spark.metrics.source.Source
+```
+
+### Alternatives
+
+The primary alternative to the JMX based implementation is to use the
+Graphite base sink. The following text describes how a Graphite solution
+would be implemented. The primary downsides to using Graphite are that it
+does not provide an easy pathway to integrate with the Hawkular based
+metrics that OpenShift uses, and that the storage for individual metrics
+data is contained within the containers created for the Graphite and Carbon
+serivces.
+
+To implement a Graphite metrics solution with the current Spark deployment
+methodology, there will need to be changes to the way that oshinko based
+applications deploy the Spark clusters. The addition of a configuration file
+to current Spark images, and the creation of two images for the Graphite and
+Carbon components will be required.
+
+Oshinko based applications will need to be modified so that the deployments
 for Spark master pods will include the new Graphite and Carbon images. An
 example of what this looks like in YAML template form can be seen in
 example 2. The deployment will also need a service created for the Graphite
 API server to allow access to the metrics data.
-
-An open question for the oshinko-rest implementation is whether the user
-should be have the ability to disable the deployment of metrics, or if this
-feature should always be deployed. For this specification, we should assume
-that the metrics server is always deployed.
-
-The Spark images currently in use will need to have a `metrics.properties`
-file added to their configuration directory (`$SPARK_HOME/conf`). This file
-is responsible for enabling the metrics and configuring the sink in use. The
-necessary components of that file can be seen in example 3.
 
 Images will need to be created for the Graphite API server and the Carbon
 storage application. These images should be based on Centos for public
@@ -201,36 +291,19 @@ executor.source.jvm.class=org.apache.spark.metrics.source.JvmSource
 master.source.executors.class=org.apache.spark.metrics.source.Source
 ```
 
-### Alternatives
-
-One alternative would be to explore the `MetricsServlet` code in the Spark
-base to determine why it is not publishing data. If a root to this could be
-found, then a patch could be created for the upstream Spark project to better
-enable this sink. The main downside to this approach is the unknown factor
-of community acceptance for such a change.
-
-Another alternative would be to use one of the other sinks available in Spark.
-Each of these sinks carries differing levels of complication. On the simple
-end is the `CSVSink`, which writes metrics data to text files. This is
-problematic due to the restriction of needing a volume to write and access
-the files from, not to mention that the values themselves will need an
-abstraction layer to expose. On the more complex end of the spectrum is the
-`JmxSink`, which provides the metrics data to a JMX server which can display
-the data in a console. The JMX option is more attractive in deployments that
-are already using Java based infrastructures with support for managed beans.
-
 ## Affected Components
 
-This change will initially affect only the oshinko-rest project. There is
-potential in the future for exposing the metrics to the oshinko-webui, but
-this is not included in this specification.
+The openshift-spark project will need to be changed to include changes for
+the launcher script, regardless of the methodology chosen.
+
+The oshinko-core project will also need to be changed depending on the type
+of deployment required.
 
 ## Testing
 
-The Graphite metrics server should be tested in the course of full end-to-end
-functional testing. The server should be queried for presence and interaction
-by retrieving metrics from a deployed cluster and ensuring that calls can be
-made to specific metrics properties.
+Testing will be formed by deploying clusters and then aquiring metrics data
+from the exposed REST server. This should confirm whether the server is
+working and relaying good information.
 
 ## Documentation
 
@@ -240,9 +313,6 @@ server with links to the upstream Graphite project where appropriate.
 
 ## References
 
-1: https://graphite.readthedocs.io/en/latest/
+1: https://spark.apache.org/docs/2.0.0/monitoring.html#metrics
 
-2: https://spark.apache.org/docs/2.0.0/monitoring.html#metrics
-
-[1]: https://graphite.readthedocs.io/en/latest/
-[2]: https://spark.apache.org/docs/2.0.0/monitoring.html#metrics
+[1]: https://spark.apache.org/docs/2.0.0/monitoring.html#metrics
