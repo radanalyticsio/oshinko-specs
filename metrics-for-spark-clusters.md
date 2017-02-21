@@ -178,6 +178,36 @@ driver.source.jvm.class=org.apache.spark.metrics.source.JvmSource
 executor.source.jvm.class=org.apache.spark.metrics.source.JvmSource
 master.source.executors.class=org.apache.spark.metrics.source.Source
 ```
+### Integrating with OpenShift metrics
+
+For OpenShift deployments that have metrics enabled, the JmxSink can be
+used in conjunction with Jolokia, or Prometheus, to expose the metrics
+data. This occurs through a ConfigMap object that defines what is exposed,
+the frequency of update, and any specific labels and types that should be
+applied to the metadata sent to Hawkular.
+
+With the Jolokia based implementation defined in this spec the metrics data
+could be exposed to Hawkular by using a ConfigMap that looks similar to the
+following:
+
+```
+hawkular-openshift-agent:
+  endpoints:
+  - type: jolokia
+    collection_interval: 10s
+    protocol: http
+    port: 8778
+    path: /jolokia/
+    tags:
+      name: ${POD:name}
+    metrics:
+    - name: java.lang:type=Memory#HeapMemoryUsage
+      id: JVM Heap Memory Used
+      type: gauge
+```
+
+This example is quite limited, but goes to show the type of information that
+can be provided for the Hawkular metrics collector.
 
 ### Alternatives
 
