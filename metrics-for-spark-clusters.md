@@ -102,6 +102,11 @@ two primary methods that oshinko could use for adding Jolokia are as a JVM
 agent attached to the master node in a Spark cluster, or as a proxy agent
 in a container with network access to the JVM in a master node.
 
+Regardless of the chosen solution, there will be an option to enable the
+metrics collector. This option will be disabled by default. Upon enablement,
+all Spark master pods will be deployed with metrics enabled in their
+deployment.
+
 ### Jolokia as a JVM agent
 
 The simplest route to deploying Jolokia is to use the agent path. This change
@@ -164,6 +169,16 @@ to craft specific requests to the Jolokia REST server. The primary
 differentiator is the separation of the REST server into a container of its
 own.
 
+#### Update
+
+After reaching a group consensus, the deployment option should use the
+Jolokia Java agent mode instead of the proxy method. This was chosen because
+it will simplify the general deployment (not needing an extra pod), and
+because there will need to be changes to the openshift-spark image regardless
+of the methodology and it was felt that adding the Jolokia JAR to the image
+would be the path of least resistance. At this time, it does not make sense
+for the development effort to add an addition pod for the Jolokia proxy agent.
+
 ### General changes
 
 Regardless of the methdology chosen, the `metrics.properties` configuration
@@ -178,6 +193,7 @@ driver.source.jvm.class=org.apache.spark.metrics.source.JvmSource
 executor.source.jvm.class=org.apache.spark.metrics.source.JvmSource
 master.source.executors.class=org.apache.spark.metrics.source.Source
 ```
+
 ### Integrating with OpenShift metrics
 
 For OpenShift deployments that have metrics enabled, the JmxSink can be
@@ -326,8 +342,22 @@ master.source.executors.class=org.apache.spark.metrics.source.Source
 The openshift-spark project will need to be changed to include changes for
 the launcher script, regardless of the methodology chosen.
 
-The oshinko-core project will also need to be changed depending on the type
-of deployment required.
+The openshift-spark image will also need to include the Jolokia agent JAR
+file.
+
+The oshinko-core project will need to change its deployment methodology to
+account for requested metrics from the user and then to enable the Jolokia
+Java agent and add the necessary ConfigMap objects for Hawkular metrics
+harvesting.
+
+The oshinko-console project will need similar adjustments as per the
+oshinko-core changes.
+
+The oshinko-webui will need to allow for a user to select whether to enable
+or disable metrics.
+
+It is likely that the scorpion-stare project will need to adjust its REST
+based calls to the metrics server.
 
 ## Testing
 
