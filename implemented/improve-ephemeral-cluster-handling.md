@@ -20,8 +20,8 @@ deleting the cluster, and sometimes this will mean allowing the cluster to persi
 
 Note that in particular, long-running streaming applications may never complete
 by design and therefore the intended method for stopping them is to delete the
-deploymentconfig or job that launched the driver pod. In this case the current
-handling will always leak ephemeral clusters.
+object(s) that maintain the driver pod. In this case the current handling will
+always leak ephemeral clusters.
 
 ## Problem statement
 
@@ -40,7 +40,7 @@ scenarios:
   Note that this general case covers these scenarios:
   * driver pod is scheduled to another node
   * driver pod replication controller is scaled to 0 (scale down or redeploy)
-  
+
 * A driver pod runs to completion
 
   If the pod was launched from a deploymentconfig, the pod will go to the
@@ -94,7 +94,9 @@ scenarios:
 Note that in this spec we are only considering driver applications created using
 deploymentconfigs. At this time we do not support ephemeral clusters created by
 driver applications started from job objects. Making ephemeral clusters work
-for job objects requires more work.
+for job objects requires more work. Therefore, in this solution, clusters created
+by applications started from job objects will always be non-ephemeral.
+
 
 ### Labeling to store metadata
 
@@ -186,8 +188,9 @@ and `get` oshinko CLI commands:
   Note that if the `--ephemeral` option is set, the `--app` option must also be set.
   However, the `--app` option may be used by itself to associate a driver with a
   long-running cluster.  Since the `uses-oshinko-cluster` label appears on the driver
-  replicationcontroller, it's a many-to-one relationship and so multiple drivers can
-  be associated with a long-running cluster.
+  replicationcontroller, it's theoretically a many-to-one relationship and so multiple
+  drivers could be associated with a long-running cluster. However, at present drivers
+  may only be associated with a cluster on creation.
 
 * Options on delete to name the deployment and the termination status of the driver
 
@@ -218,7 +221,7 @@ and `get` oshinko CLI commands:
 * Option on get to return clusters associated with a particular deployment
 
       $ oshinko-cli get --app=<name of driver deployment>
-    
+
   This option on get causes oshinko to lookup the named deployment and search for the
   `uses-oshinko-cluster` label. If it's found, the named cluster is returned. The primary
   use in the S2I workflow is to allow a restarted driver pod to discover the name of the
@@ -259,7 +262,7 @@ The rules for cluster deletion when `oshinko-cli delete` is called are:
    is 1, an ephemeral cluster will be deleted if the value of `app-status` is
    `completed`. Since the application completed and the driver has not been scaled up
    (that is, there is no other driver pod using the cluster) the cluster serves
-   no further purpose. The expectation is that application has run its course and
+   no further purpose. The expectation is that the application has run its course and
    will not be restarted.
 
    (In reality, because of the limitation of restart semantics for deploymentconfigs,
@@ -267,8 +270,8 @@ The rules for cluster deletion when `oshinko-cli delete` is called are:
    does not delete the driver deploymentconfig or scale it to 0. However, since these
    things may happen after the driver pod has exited, the cluster must be deleted
    since the driver pod itself is the means of deletion. If a cluster is left and
-   the driver deploymentconfig is deleted while in CrashLoopBackoff, the cluster will
-   be leaked)
+   the driver deploymentconfig is deleted while in CrashLoopBackoff, for example,
+   the cluster will be leaked)
 
 * Ephemeral clusters will always be left if the driver replica count is > 1.
   We don't yet have a use case for scaling a driver, but we can't stop it, and
@@ -277,8 +280,8 @@ The rules for cluster deletion when `oshinko-cli delete` is called are:
 
 * An ephemeral cluster will be left if the replica count is 1 and the `app-status`
   is `terminated`. In this case we expect the driver to be restarted. The
-  application was stopped early, and the most likely case is that a driver pod
-  was rescheduled or killed purposely by an operator to case a restart. In this
+  application was stopped early, and the most likely cause is that a driver pod
+  was rescheduled or killed purposely by an operator to cause a restart. In this
   scenario it's much quicker to allow a new driver pod to use the same cluster.
 
   If the intention was to halt the application entirely, then the driver deploymentconfig
@@ -288,21 +291,23 @@ The rules for cluster deletion when `oshinko-cli delete` is called are:
 
 There are a few rules governing startup of a driver pod:
 
-* If a driver pod has a cluster name specified in the environment, it just
-  uses that name for the cluster. If it does not have a name specified, it
-  looks to see (via oshinko-cli) if there is a name recorded in a label on
+* If a driver pod has a cluster name specified in the environment, it will just
+  use that name for the cluster. If it does not have a name specified, it
+  will look to see (via oshinko-cli) if there is a name recorded in a label on
   its replicationcontroller.
 
 * If a driver pod looks up a cluster name to see if it's in use and finds a cluster
-  with `Incomplete` status, it waits up to a minute for the cluster to
-  disappear or have its status changed to `Running`. This accounts for clusters
+  with `Incomplete` status, it will wait up to a minute for the cluster to
+  disappear or have its status changed to `Running`. This will account for clusters
   in the process of being deleted or created. If an incomplete cluster does not
-  resolve in 1 minute, the driver pod exits.
+  resolve in 1 minute, the driver pod will exit (and likely be restarted again
+  by a deploymentconfig or job, so in theory incomplete clusters have an
+  unlimited amount of time to resolve).
 
 * If a driver pod looks up a cluster name and finds an ephemeral cluster, it
-  compares its own deployment value to the value of the `ephemeral` label on
+  will compare its own deployment value to the value of the `ephemeral` label on
   the found cluster (as returned from oshinko-cli). If the two deployments
-  don't match, the driver pod exits.
+  don't match, the driver pod will exit.
 
 * If oshinko cannot find the deployment for the driver pod, it will create a
   long-running cluster even if an ephemeral cluster was asked for. This covers
@@ -317,12 +322,12 @@ present and which are not.
 
 Consequently, null values should be added for certain columns:
 
-* <missing> will be used for services and routes that might not exist
-* <shared> will be used for long-running clusters that have no associated deployment
+* \<missing\> will be used for services and routes that might not exist
+* \<shared\> will be used for long-running clusters that have no associated deployment
 
 ## Alternatives / Additional (in no particular order)
 
-### Make ephemeral cluster logic with with jobs
+### Make ephemeral cluster logic work with jobs
 
 Jobs don't use replicationcontrollers, so the mechanisms we use to
 track ephemeral clusters and their associated deployments will need to be
@@ -342,7 +347,7 @@ to allow an ephemeral cluster to remain
 Currently we only do association on create. However, the label mechanism
 will work to associate a driver with a long-running cluster, so we may
 want to add a CLI command to handle association/disassociation of
-drivers with long-runnign clusters.
+drivers with long-running clusters.
 
 ### Add a CLI command to lookup all the drivers using a shared cluster
 
@@ -399,11 +404,11 @@ errors exist.
 
 ## Affected Components
 
-oshinko-core
-oshinko-cli
-oshinko-s2i
-oshino-web (as far as expected values from `get`)
-oshinko-rest (as far as changed parameters to oshinko-core call)
+* oshinko-core
+* oshinko-cli
+* oshinko-s2i
+* oshinko-web (as far as expected values from `get`)
+* oshinko-rest (as far as changed parameters to oshinko-core functions)
 
 ## Testing
 
